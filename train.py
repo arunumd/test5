@@ -208,11 +208,11 @@ class Trainer(object):
             loss_G_GAN = self.criterionGAN(pred_fake, True)
             
             # Segmentation loss G(A) = B
-            loss_G_CE = self.criterionSeg(output, target) * 1.0 # 1.0 is lambda_CE (weight for cross entropy loss)
+            loss_G_CE = self.criterionSeg(output, target) * self.args.lambda_Seg # 1.0 is lambda_CE (weight for cross entropy loss)
             
             # combine loss and calculate gradients
             # lambda = 0.1
-            loss_G = loss_G_GAN * 0.1 / self.args.batch_size + loss_G_CE
+            loss_G = loss_G_GAN * self.args.lambda_GAN / self.args.batch_size + loss_G_CE
             loss_G.backward()
             
             self.optimizer_G.step()
@@ -237,10 +237,12 @@ class Trainer(object):
                 self.summary.visualize_image(self.writer, self.args.dataset, image, target, output, global_step)
 
         self.writer.add_scalar('train/total_loss_epoch', G_Seg_loss, epoch)
+        print('Training:')
         print('    [Epoch: %d, numImages: %5d]' % (epoch, i * self.args.batch_size + image.data.shape[0]))
-        print('    G Seg Loss: %.3f' % G_Seg_loss)
+        print('    Train G_Seg_Loss: %.3f' % G_Seg_loss)
 
-#======================================= no load checkpoint ==================#
+
+#======================================= no save checkpoint ==================#
 #        if self.args.no_val:
 #            # save checkpoint every epoch
 #            is_best = False
@@ -284,9 +286,9 @@ class Trainer(object):
         self.writer.add_scalar('val/Acc_class', Acc_class, epoch)
         self.writer.add_scalar('val/fwIoU', FWIoU, epoch)
         print('Validation:')
-        print('[Epoch: %d, numImages: %5d]' % (epoch, i * self.args.batch_size + image.data.shape[0]))
-        print("Acc:{}, Acc_class:{}, mIoU:{}, fwIoU: {}".format(Acc, Acc_class, mIoU, FWIoU))
-        print('Loss: %.3f' % test_loss)
+        print('    [Epoch: %d, numImages: %5d]' % (epoch, i * self.args.batch_size + image.data.shape[0]))
+        print("    Acc:{}, Acc_class:{}, mIoU:{}, fwIoU: {}".format(Acc, Acc_class, mIoU, FWIoU))
+        print('    Test G_Seg_Loss: %.3f' % test_loss)
 
         new_pred = mIoU
         
@@ -295,13 +297,15 @@ class Trainer(object):
             is_best = True
             self.best_pred = new_pred
             
-            #============== no save checkpoint ======================#
-#            self.saver.save_checkpoint({
-#                'epoch': epoch + 1,
-#                'state_dict': self.model.module.state_dict(),
-#                'optimizer': self.optimizer.state_dict(),
-#                'best_pred': self.best_pred,
-#            }, is_best)
+            #============== only save checkpoint for best model ======================#
+            self.saver.save_checkpoint({
+                'epoch': epoch + 1,
+                'state_dict_G': self.network_G.module.state_dict(),
+                'state_dict_D': self.network_D.state_dict(),
+                'optimizer_G': self.optimizer_G.state_dict(),
+                'optimizer_D': self.optimizer_D.state_dict(),
+                'best_pred': self.best_pred,
+            }, is_best)
             #=======================================================#
             
     #========================== new method ===============================# 
@@ -377,6 +381,14 @@ def main():
                         metavar='M', help='w-decay (default: 5e-4)')
     parser.add_argument('--nesterov', action='store_true', default=False,
                         help='whether use nesterov (default: False)')
+    
+    # ============== control lambda  ================================== #
+    parser.add_argument('--lambda-seg',  type=float, default=1.0,
+                        help='lambda-seg (default: 1.0)')
+    parser.add_argument('--lambda-GAN',  type=float, default=0.1,
+                        help='lambda-GAN (default: 0.1)')
+    # ==================================================================== #
+    
     # cuda, seed and logging
     parser.add_argument('--no-cuda', action='store_true', default=
                         False, help='disables CUDA training')
@@ -386,8 +398,8 @@ def main():
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
     # checking point
-    parser.add_argument('--resume', type=str, default=None,
-                        help='put the path to resuming file if needed')
+#    parser.add_argument('--resume', type=str, default=None,
+#                        help='put the path to resuming file if needed')
     parser.add_argument('--checkname', type=str, default=None,
                         help='set the checkpoint name')
     # finetuning pre-trained models
@@ -396,8 +408,8 @@ def main():
     # evaluation option
     parser.add_argument('--eval-interval', type=int, default=1,
                         help='evaluuation interval (default: 1)')
-    parser.add_argument('--no-val', action='store_true', default=False,
-                        help='skip validation during training')
+#    parser.add_argument('--no-val', action='store_true', default=False,
+#                        help='skip validation during training')
 
     args = parser.parse_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -446,7 +458,8 @@ def main():
     print('Total Epoches:', trainer.args.epochs)
     for epoch in range(trainer.args.start_epoch, trainer.args.epochs):
         trainer.training(epoch)
-        if not trainer.args.no_val and epoch % args.eval_interval == (args.eval_interval - 1):
+        #if not trainer.args.no_val and epoch % args.eval_interval == (args.eval_interval - 1):
+        if epoch % args.eval_interval == (args.eval_interval - 1):
             trainer.validation(epoch)
 
     trainer.writer.close()
