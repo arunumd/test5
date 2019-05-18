@@ -383,8 +383,8 @@ def main():
                         help='whether use nesterov (default: False)')
     
     # ============== control lambda  ================================== #
-    parser.add_argument('--lambda-seg',  type=float, default=1.0,
-                        help='lambda-seg (default: 1.0)')
+    parser.add_argument('--lambda-Seg',  type=float, default=1.0,
+                        help='lambda-Seg (default: 1.0)')
     parser.add_argument('--lambda-GAN',  type=float, default=0.1,
                         help='lambda-GAN (default: 0.1)')
     # ==================================================================== #
