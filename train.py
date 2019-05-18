@@ -208,7 +208,7 @@ class Trainer(object):
             loss_G_GAN = self.criterionGAN(pred_fake, True)
             
             # Segmentation loss G(A) = B
-            loss_G_CE = self.criterionSeg(output, target) * self.args.lambda_Seg # 1.0 is lambda_CE (weight for cross entropy loss)
+            loss_G_CE = self.criterionSeg(output_score, target) * self.args.lambda_Seg # 1.0 is lambda_CE (weight for cross entropy loss)
             
             # combine loss and calculate gradients
             # lambda = 0.1
