@@ -10,7 +10,7 @@ from dataloaders.utils import decode_segmap
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-checkpoint = torch.load("model_best.pth")
+checkpoint = torch.load("./run/pascal/deeplab-resnet/model_best.pth")
 
 model = DeepLab(num_classes=21,
                 backbone='resnet',
