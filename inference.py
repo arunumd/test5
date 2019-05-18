@@ -18,7 +18,7 @@ model = DeepLab(num_classes=21,
                 sync_bn=True,
                 freeze_bn=False)
 
-model.load_state_dict(checkpoint['state_dict'])
+model.load_state_dict(checkpoint['state_dict_G'])
 model.eval()
 model.to(device)
 
